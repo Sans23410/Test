@@ -1,0 +1,273 @@
+--[[
+    Простой GUI для управления читом
+    Нажми INSERT для открытия/закрытия меню
+]]
+
+local Library = {}
+
+-- Создание главного окна
+function Library:CreateWindow(title)
+    local ScreenGui = Instance.new("ScreenGui")
+    local MainFrame = Instance.new("Frame")
+    local Title = Instance.new("TextLabel")
+    local Container = Instance.new("ScrollingFrame")
+    local UIListLayout = Instance.new("UIListLayout")
+    
+    ScreenGui.Name = "CheatGUI"
+    ScreenGui.Parent = game.CoreGui
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    MainFrame.Name = "MainFrame"
+    MainFrame.Parent = ScreenGui
+    MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Position = UDim2.new(0.3, 0, 0.2, 0)
+    MainFrame.Size = UDim2.new(0, 400, 0, 500)
+    MainFrame.Active = true
+    MainFrame.Draggable = true
+    
+    Title.Name = "Title"
+    Title.Parent = MainFrame
+    Title.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    Title.BorderSizePixel = 0
+    Title.Size = UDim2.new(1, 0, 0, 40)
+    Title.Font = Enum.Font.GothamBold
+    Title.Text = title
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextSize = 18
+    
+    Container.Name = "Container"
+    Container.Parent = MainFrame
+    Container.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    Container.BorderSizePixel = 0
+    Container.Position = UDim2.new(0, 0, 0, 40)
+    Container.Size = UDim2.new(1, 0, 1, -40)
+    Container.ScrollBarThickness = 4
+    Container.CanvasSize = UDim2.new(0, 0, 0, 0)
+    
+    UIListLayout.Parent = Container
+    UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    UIListLayout.Padding = UDim.new(0, 5)
+    
+    UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        Container.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 10)
+    end)
+    
+    local Window = {}
+    Window.Container = Container
+    Window.ScreenGui = ScreenGui
+    
+    -- Toggle visibility with INSERT key
+    local UserInputService = game:GetService("UserInputService")
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and input.KeyCode == Enum.KeyCode.Insert then
+            MainFrame.Visible = not MainFrame.Visible
+        end
+    end)
+    
+    function Window:AddTab(name)
+        local Tab = Instance.new("Frame")
+        local TabButton = Instance.new("TextButton")
+        local TabContainer = Instance.new("Frame")
+        local TabUIListLayout = Instance.new("UIListLayout")
+        
+        Tab.Name = name
+        Tab.Parent = Container
+        Tab.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        Tab.BorderSizePixel = 0
+        Tab.Size = UDim2.new(1, -10, 0, 30)
+        
+        TabButton.Name = "TabButton"
+        TabButton.Parent = Tab
+        TabButton.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+        TabButton.BorderSizePixel = 0
+        TabButton.Size = UDim2.new(1, 0, 1, 0)
+        TabButton.Font = Enum.Font.Gotham
+        TabButton.Text = name
+        TabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        TabButton.TextSize = 14
+        
+        TabContainer.Name = "TabContainer"
+        TabContainer.Parent = Container
+        TabContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        TabContainer.BorderSizePixel = 0
+        TabContainer.Size = UDim2.new(1, -10, 0, 0)
+        TabContainer.Visible = false
+        
+        TabUIListLayout.Parent = TabContainer
+        TabUIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        TabUIListLayout.Padding = UDim.new(0, 5)
+        
+        TabUIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            TabContainer.Size = UDim2.new(1, -10, 0, TabUIListLayout.AbsoluteContentSize.Y + 10)
+        end)
+        
+        TabButton.MouseButton1Click:Connect(function()
+            TabContainer.Visible = not TabContainer.Visible
+        end)
+        
+        local TabObject = {}
+        TabObject.Container = TabContainer
+        
+        function TabObject:AddToggle(name, default, callback)
+            local Toggle = Instance.new("Frame")
+            local ToggleButton = Instance.new("TextButton")
+            local Status = Instance.new("TextLabel")
+            
+            Toggle.Name = name
+            Toggle.Parent = TabContainer
+            Toggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            Toggle.BorderSizePixel = 0
+            Toggle.Size = UDim2.new(1, -10, 0, 30)
+            
+            ToggleButton.Name = "ToggleButton"
+            ToggleButton.Parent = Toggle
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            ToggleButton.BorderSizePixel = 0
+            ToggleButton.Position = UDim2.new(0, 5, 0.5, -10)
+            ToggleButton.Size = UDim2.new(0, 20, 0, 20)
+            ToggleButton.Text = ""
+            
+            Status.Name = "Status"
+            Status.Parent = Toggle
+            Status.BackgroundTransparency = 1
+            Status.Position = UDim2.new(0, 30, 0, 0)
+            Status.Size = UDim2.new(1, -30, 1, 0)
+            Status.Font = Enum.Font.Gotham
+            Status.Text = name
+            Status.TextColor3 = Color3.fromRGB(255, 255, 255)
+            Status.TextSize = 12
+            Status.TextXAlignment = Enum.TextXAlignment.Left
+            
+            local toggled = default
+            
+            local function UpdateToggle()
+                if toggled then
+                    ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+                else
+                    ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+                end
+                callback(toggled)
+            end
+            
+            UpdateToggle()
+            
+            ToggleButton.MouseButton1Click:Connect(function()
+                toggled = not toggled
+                UpdateToggle()
+            end)
+        end
+        
+        function TabObject:AddSlider(name, min, max, default, callback)
+            local Slider = Instance.new("Frame")
+            local SliderLabel = Instance.new("TextLabel")
+            local SliderBar = Instance.new("Frame")
+            local SliderFill = Instance.new("Frame")
+            local SliderButton = Instance.new("TextButton")
+            local ValueLabel = Instance.new("TextLabel")
+            
+            Slider.Name = name
+            Slider.Parent = TabContainer
+            Slider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            Slider.BorderSizePixel = 0
+            Slider.Size = UDim2.new(1, -10, 0, 50)
+            
+            SliderLabel.Name = "SliderLabel"
+            SliderLabel.Parent = Slider
+            SliderLabel.BackgroundTransparency = 1
+            SliderLabel.Position = UDim2.new(0, 5, 0, 5)
+            SliderLabel.Size = UDim2.new(1, -10, 0, 15)
+            SliderLabel.Font = Enum.Font.Gotham
+            SliderLabel.Text = name
+            SliderLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            SliderLabel.TextSize = 12
+            SliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+            
+            SliderBar.Name = "SliderBar"
+            SliderBar.Parent = Slider
+            SliderBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            SliderBar.BorderSizePixel = 0
+            SliderBar.Position = UDim2.new(0, 5, 0, 25)
+            SliderBar.Size = UDim2.new(1, -60, 0, 20)
+            
+            SliderFill.Name = "SliderFill"
+            SliderFill.Parent = SliderBar
+            SliderFill.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+            SliderFill.BorderSizePixel = 0
+            SliderFill.Size = UDim2.new(0, 0, 1, 0)
+            
+            SliderButton.Name = "SliderButton"
+            SliderButton.Parent = SliderBar
+            SliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            SliderButton.BorderSizePixel = 0
+            SliderButton.Position = UDim2.new(0, 0, 0.5, -10)
+            SliderButton.Size = UDim2.new(0, 10, 0, 20)
+            SliderButton.Text = ""
+            
+            ValueLabel.Name = "ValueLabel"
+            ValueLabel.Parent = Slider
+            ValueLabel.BackgroundTransparency = 1
+            ValueLabel.Position = UDim2.new(1, -50, 0, 25)
+            ValueLabel.Size = UDim2.new(0, 45, 0, 20)
+            ValueLabel.Font = Enum.Font.Gotham
+            ValueLabel.Text = tostring(default)
+            ValueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            ValueLabel.TextSize = 12
+            
+            local value = default
+            local dragging = false
+            
+            local function UpdateSlider(input)
+                local pos = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
+                value = math.floor(min + (max - min) * pos)
+                SliderFill.Size = UDim2.new(pos, 0, 1, 0)
+                SliderButton.Position = UDim2.new(pos, -5, 0.5, -10)
+                ValueLabel.Text = tostring(value)
+                callback(value)
+            end
+            
+            SliderButton.MouseButton1Down:Connect(function()
+                dragging = true
+            end)
+            
+            game:GetService("UserInputService").InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = false
+                end
+            end)
+            
+            game:GetService("UserInputService").InputChanged:Connect(function(input)
+                if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    UpdateSlider(input)
+                end
+            end)
+            
+            -- Set initial value
+            local initialPos = (default - min) / (max - min)
+            SliderFill.Size = UDim2.new(initialPos, 0, 1, 0)
+            SliderButton.Position = UDim2.new(initialPos, -5, 0.5, -10)
+        end
+        
+        function TabObject:AddButton(name, callback)
+            local Button = Instance.new("TextButton")
+            
+            Button.Name = name
+            Button.Parent = TabContainer
+            Button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            Button.BorderSizePixel = 0
+            Button.Size = UDim2.new(1, -10, 0, 30)
+            Button.Font = Enum.Font.Gotham
+            Button.Text = name
+            Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+            Button.TextSize = 12
+            
+            Button.MouseButton1Click:Connect(callback)
+        end
+        
+        return TabObject
+    end
+    
+    return Window
+end
+
+return Library
