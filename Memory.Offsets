@@ -1,0 +1,408 @@
+--[[
+    Roblox Memory Library
+    Работа с памятью через оффсеты
+    Version: version-d599f7fc52a8404c
+]]
+
+local Memory = {}
+
+-- Загрузка обновленных оффсетов
+Memory.Offsets = loadstring(game:HttpGet("https://raw.githubusercontent.com/Sans23410/Test/refs/heads/main/ofsets%20update"))()
+-- Или локально: Memory.Offsets = require(script.OffsetsUpdated)
+
+-- ============================================
+-- HELPER FUNCTIONS
+-- ============================================
+
+-- Получить адрес объекта (для будущего использования с memory reading)
+function Memory:GetAddress(instance)
+    -- В Lua нет прямого доступа к адресам, используем game API
+    return instance
+end
+
+-- Проверка валидности
+function Memory:IsValid(instance)
+    return instance and instance.Parent ~= nil
+end
+
+-- ============================================
+-- PLAYER FUNCTIONS
+-- ============================================
+
+function Memory:GetPlayers()
+    local players = {}
+    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+        if player ~= game:GetService("Players").LocalPlayer then
+            table.insert(players, player)
+        end
+    end
+    return players
+end
+
+function Memory:GetCharacter(player)
+    return player.Character
+end
+
+function Memory:GetHumanoid(character)
+    return character and character:FindFirstChild("Humanoid")
+end
+
+function Memory:GetRootPart(character)
+    return character and (character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso"))
+end
+
+function Memory:GetHead(character)
+    return character and character:FindFirstChild("Head")
+end
+
+-- Получить все части тела
+function Memory:GetBodyParts(character)
+    if not character then return {} end
+    
+    return {
+        Head = character:FindFirstChild("Head"),
+        UpperTorso = character:FindFirstChild("UpperTorso"),
+        LowerTorso = character:FindFirstChild("LowerTorso"),
+        LeftUpperArm = character:FindFirstChild("LeftUpperArm"),
+        RightUpperArm = character:FindFirstChild("RightUpperArm"),
+        LeftLowerArm = character:FindFirstChild("LeftLowerArm"),
+        RightLowerArm = character:FindFirstChild("RightLowerArm"),
+        LeftHand = character:FindFirstChild("LeftHand"),
+        RightHand = character:FindFirstChild("RightHand"),
+        LeftUpperLeg = character:FindFirstChild("LeftUpperLeg"),
+        RightUpperLeg = character:FindFirstChild("RightUpperLeg"),
+        LeftLowerLeg = character:FindFirstChild("LeftLowerLeg"),
+        RightLowerLeg = character:FindFirstChild("RightLowerLeg"),
+        LeftFoot = character:FindFirstChild("LeftFoot"),
+        RightFoot = character:FindFirstChild("RightFoot"),
+        HumanoidRootPart = character:FindFirstChild("HumanoidRootPart"),
+        -- R6 Support
+        Torso = character:FindFirstChild("Torso"),
+        ["Left Arm"] = character:FindFirstChild("Left Arm"),
+        ["Right Arm"] = character:FindFirstChild("Right Arm"),
+        ["Left Leg"] = character:FindFirstChild("Left Leg"),
+        ["Right Leg"] = character:FindFirstChild("Right Leg"),
+    }
+end
+
+-- ============================================
+-- HEALTH FUNCTIONS
+-- ============================================
+
+function Memory:GetHealth(humanoid)
+    return humanoid and humanoid.Health or 0
+end
+
+function Memory:GetMaxHealth(humanoid)
+    return humanoid and humanoid.MaxHealth or 100
+end
+
+function Memory:GetHealthPercent(humanoid)
+    if not humanoid then return 0 end
+    return (humanoid.Health / humanoid.MaxHealth) * 100
+end
+
+-- ============================================
+-- POSITION FUNCTIONS
+-- ============================================
+
+function Memory:GetPosition(part)
+    return part and part.Position or Vector3.new(0, 0, 0)
+end
+
+function Memory:GetCFrame(part)
+    return part and part.CFrame or CFrame.new()
+end
+
+function Memory:GetVelocity(part)
+    return part and part.Velocity or Vector3.new(0, 0, 0)
+end
+
+-- ============================================
+-- CAMERA FUNCTIONS
+-- ============================================
+
+function Memory:GetCamera()
+    return workspace.CurrentCamera
+end
+
+function Memory:GetCameraPosition()
+    local camera = self:GetCamera()
+    return camera.CFrame.Position
+end
+
+function Memory:GetCameraLookVector()
+    local camera = self:GetCamera()
+    return camera.CFrame.LookVector
+end
+
+function Memory:GetFOV()
+    local camera = self:GetCamera()
+    return camera.FieldOfView
+end
+
+function Memory:SetFOV(fov)
+    local camera = self:GetCamera()
+    camera.FieldOfView = fov
+end
+
+-- ============================================
+-- WORLD TO SCREEN
+-- ============================================
+
+function Memory:WorldToScreen(position)
+    local camera = self:GetCamera()
+    local screenPoint, onScreen = camera:WorldToViewportPoint(position)
+    return Vector2.new(screenPoint.X, screenPoint.Y), onScreen, screenPoint.Z
+end
+
+-- ============================================
+-- DISTANCE FUNCTIONS
+-- ============================================
+
+function Memory:GetDistance(pos1, pos2)
+    return (pos1 - pos2).Magnitude
+end
+
+function Memory:GetDistance2D(pos1, pos2)
+    local dx = pos1.X - pos2.X
+    local dy = pos1.Y - pos2.Y
+    return math.sqrt(dx * dx + dy * dy)
+end
+
+-- ============================================
+-- TEAM FUNCTIONS
+-- ============================================
+
+function Memory:GetTeam(player)
+    return player.Team
+end
+
+function Memory:IsTeammate(player1, player2)
+    if not player1.Team or not player2.Team then return false end
+    return player1.Team == player2.Team
+end
+
+-- ============================================
+-- VISIBILITY FUNCTIONS
+-- ============================================
+
+function Memory:IsVisible(fromPosition, toPosition, ignoreList)
+    local direction = (toPosition - fromPosition).Unit
+    local distance = (toPosition - fromPosition).Magnitude
+    
+    local ray = Ray.new(fromPosition, direction * distance)
+    local hit, hitPosition = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList or {})
+    
+    return hit == nil or hit.Transparency >= 1
+end
+
+function Memory:CanSeePlayer(fromCharacter, toCharacter)
+    if not fromCharacter or not toCharacter then return false end
+    
+    local fromHead = self:GetHead(fromCharacter)
+    local toHead = self:GetHead(toCharacter)
+    
+    if not fromHead or not toHead then return false end
+    
+    local ignoreList = {fromCharacter, toCharacter}
+    return self:IsVisible(fromHead.Position, toHead.Position, ignoreList)
+end
+
+-- ============================================
+-- PREDICTION FUNCTIONS
+-- ============================================
+
+function Memory:PredictPosition(currentPosition, velocity, time)
+    return currentPosition + (velocity * time)
+end
+
+function Memory:CalculatePrediction(targetPart, predictionTime)
+    local position = self:GetPosition(targetPart)
+    local velocity = self:GetVelocity(targetPart)
+    return self:PredictPosition(position, velocity, predictionTime)
+end
+
+-- ============================================
+-- UTILITY FUNCTIONS
+-- ============================================
+
+function Memory:GetClosestPlayerToMouse(players, fovRadius, teamCheck, wallCheck, healthCheck)
+    local localPlayer = game:GetService("Players").LocalPlayer
+    local camera = self:GetCamera()
+    local mousePos = game:GetService("UserInputService"):GetMouseLocation()
+    
+    local closestPlayer = nil
+    local closestDistance = fovRadius or math.huge
+    
+    for _, player in pairs(players) do
+        if player == localPlayer then continue end
+        
+        local character = self:GetCharacter(player)
+        if not character then continue end
+        
+        local humanoid = self:GetHumanoid(character)
+        if not humanoid then continue end
+        
+        -- Team check
+        if teamCheck and self:IsTeammate(player, localPlayer) then
+            continue
+        end
+        
+        -- Health check
+        if healthCheck and humanoid.Health <= 0 then
+            continue
+        end
+        
+        local head = self:GetHead(character)
+        if not head then continue end
+        
+        -- Wall check
+        if wallCheck and not self:CanSeePlayer(localPlayer.Character, character) then
+            continue
+        end
+        
+        -- Screen position
+        local screenPos, onScreen = self:WorldToScreen(head.Position)
+        if not onScreen then continue end
+        
+        -- Distance to mouse
+        local distance = self:GetDistance2D(mousePos, screenPos)
+        
+        if distance < closestDistance then
+            closestDistance = distance
+            closestPlayer = player
+        end
+    end
+    
+    return closestPlayer, closestDistance
+end
+
+function Memory:GetClosestPlayerToCamera(players, maxDistance, teamCheck, wallCheck, healthCheck)
+    local localPlayer = game:GetService("Players").LocalPlayer
+    local cameraPos = self:GetCameraPosition()
+    
+    local closestPlayer = nil
+    local closestDistance = maxDistance or math.huge
+    
+    for _, player in pairs(players) do
+        if player == localPlayer then continue end
+        
+        local character = self:GetCharacter(player)
+        if not character then continue end
+        
+        local humanoid = self:GetHumanoid(character)
+        if not humanoid then continue end
+        
+        -- Team check
+        if teamCheck and self:IsTeammate(player, localPlayer) then
+            continue
+        end
+        
+        -- Health check
+        if healthCheck and humanoid.Health <= 0 then
+            continue
+        end
+        
+        local rootPart = self:GetRootPart(character)
+        if not rootPart then continue end
+        
+        -- Wall check
+        if wallCheck and not self:CanSeePlayer(localPlayer.Character, character) then
+            continue
+        end
+        
+        -- Distance
+        local distance = self:GetDistance(cameraPos, rootPart.Position)
+        
+        if distance < closestDistance then
+            closestDistance = distance
+            closestPlayer = player
+        end
+    end
+    
+    return closestPlayer, closestDistance
+end
+
+-- ============================================
+-- MODIFICATION FUNCTIONS
+-- ============================================
+
+function Memory:SetWalkSpeed(humanoid, speed)
+    if humanoid then
+        humanoid.WalkSpeed = speed
+    end
+end
+
+function Memory:SetJumpPower(humanoid, power)
+    if humanoid then
+        humanoid.JumpPower = power
+    end
+end
+
+function Memory:SetHipHeight(humanoid, height)
+    if humanoid then
+        humanoid.HipHeight = height
+    end
+end
+
+function Memory:SetGravity(value)
+    workspace.Gravity = value
+end
+
+-- ============================================
+-- BOUNDING BOX CALCULATION
+-- ============================================
+
+function Memory:GetBoundingBox(character)
+    if not character then return nil end
+    
+    local parts = {}
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            table.insert(parts, part)
+        end
+    end
+    
+    if #parts == 0 then return nil end
+    
+    local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
+    local allOnScreen = true
+    
+    for _, part in pairs(parts) do
+        local corners = {
+            part.CFrame * CFrame.new(-part.Size.X/2, -part.Size.Y/2, -part.Size.Z/2),
+            part.CFrame * CFrame.new(part.Size.X/2, -part.Size.Y/2, -part.Size.Z/2),
+            part.CFrame * CFrame.new(-part.Size.X/2, part.Size.Y/2, -part.Size.Z/2),
+            part.CFrame * CFrame.new(part.Size.X/2, part.Size.Y/2, -part.Size.Z/2),
+            part.CFrame * CFrame.new(-part.Size.X/2, -part.Size.Y/2, part.Size.Z/2),
+            part.CFrame * CFrame.new(part.Size.X/2, -part.Size.Y/2, part.Size.Z/2),
+            part.CFrame * CFrame.new(-part.Size.X/2, part.Size.Y/2, part.Size.Z/2),
+            part.CFrame * CFrame.new(part.Size.X/2, part.Size.Y/2, part.Size.Z/2),
+        }
+        
+        for _, corner in pairs(corners) do
+            local screenPos, onScreen = self:WorldToScreen(corner.Position)
+            if onScreen then
+                minX = math.min(minX, screenPos.X)
+                minY = math.min(minY, screenPos.Y)
+                maxX = math.max(maxX, screenPos.X)
+                maxY = math.max(maxY, screenPos.Y)
+            else
+                allOnScreen = false
+            end
+        end
+    end
+    
+    if minX == math.huge then return nil end
+    
+    return {
+        X = minX,
+        Y = minY,
+        Width = maxX - minX,
+        Height = maxY - minY,
+        OnScreen = allOnScreen
+    }
+end
+
+return Memory
